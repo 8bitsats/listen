@@ -1,7 +1,6 @@
 use anyhow::Result;
-use listen_kit::agents::listen::{
-    create_listen_agent_claude, create_listen_agent_gemini,
-};
+use listen_kit::agents::listen::create_deep_research_agent_claude;
+use listen_kit::agents::listen::create_deep_research_agent_gemini;
 use listen_kit::common::spawn_with_signer;
 use listen_kit::evm::util::env;
 use listen_kit::reasoning_loop::Model;
@@ -13,14 +12,14 @@ use std::sync::Arc;
 async fn main() -> Result<()> {
     let leader_reasoning_loop = match env("MODEL").as_str() {
         "gemini" => ReasoningLoop::new(Model::Gemini(Arc::new(
-            create_listen_agent_gemini(),
+            create_deep_research_agent_gemini("en".to_string()),
         ))),
-        "claude" => ReasoningLoop::new(Model::Anthropic(Arc::new(
-            create_listen_agent_claude(),
+        "claude" => ReasoningLoop::new(Model::Claude(Arc::new(
+            create_deep_research_agent_claude("en".to_string()),
         ))),
         _ => anyhow::bail!("Invalid model"),
     }
-    .with_stdout(true);
+    .with_stdout(false);
 
     let signer = LocalSolanaSigner::new(env("SOLANA_PRIVATE_KEY"));
 
@@ -28,7 +27,7 @@ async fn main() -> Result<()> {
 
     tokio::spawn(async move {
         while let Some(response) = rx.recv().await {
-            println!("{:?}", response);
+            print!("{:?}\n", response);
         }
     });
 

@@ -4,7 +4,11 @@ import { useTranslation } from "react-i18next";
 import { useChat } from "../contexts/ChatContext";
 import { useModal } from "../contexts/ModalContext";
 import { useSuggestStore } from "../store/suggestStore";
-import { ToolCall, ToolCallSchema } from "../types/message";
+import {
+  ParToolCallSchema,
+  RigToolCall,
+  ToolCallSchema,
+} from "../types/message";
 import { ChatContainer } from "./ChatContainer";
 import { MessageRenderer } from "./MessageRenderer";
 import { NestedAgentOutputDisplay } from "./NestedAgentOutputDisplay";
@@ -61,14 +65,19 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
     return urlParams.chatId ? getSuggestions(urlParams.chatId) : [];
   }, [urlParams.chatId, getSuggestions]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastUserMessageRef = useRef<HTMLDivElement>(null);
   const [inputMessage, setInputMessage] = useState("");
   const { getAccessToken } = usePrivy();
   const [hasLoadedSharedChat, setHasLoadedSharedChat] = useState(false);
   const { t, i18n } = useTranslation();
   const { openShareModal } = useModal();
 
-  const [toolBeingCalled, setToolBeingCalled] = useState<ToolCall | null>(null);
+  const [activeToolCalls, setActiveToolCalls] = useState<Record<
+    string,
+    RigToolCall
+  > | null>(null);
+
+  const [justSentMessage, setJustSentMessage] = useState(false);
 
   const RECOMMENDED_QUESTIONS_CAROUSEL = [
     {
@@ -81,7 +90,7 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
     },
     {
       question: t(
-        "recommended_questions.how_to_manage_risk_when_trading_memecoins"
+        "recommended_questions.how_to_manage_risk_when_trading_memecoins",
       ),
       enabled: true,
     },
@@ -90,14 +99,20 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
       enabled: true,
     },
     {
-      question: t("recommended_questions.research_arcdotfun_for_me"), // TODO X search
+      question: t("recommended_questions.research_arcdotfun_for_me"),
       enabled: true,
     },
   ];
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  useEffect(() => {
+    if (messages.length > 0 && lastUserMessageRef.current && justSentMessage) {
+      setTimeout(() => {
+        lastUserMessageRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      // Reset the flag after scrolling
+      setJustSentMessage(false);
+    }
+  }, [messages, justSentMessage]);
 
   const handleSendMessage = useCallback(
     (message: string) => {
@@ -105,17 +120,15 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
         setMessages([]);
       } else {
         sendMessage(message);
+        // Set the flag when sending a new message
+        setJustSentMessage(true);
       }
       setInputMessage("");
       if (urlParams.chatId) {
         useSuggestStore.getState().clearSuggestions(urlParams.chatId);
       }
-
-      if (messages?.length > 0) {
-        scrollToBottom();
-      }
     },
-    [sendMessage, setMessages, urlParams.chatId]
+    [sendMessage, setMessages, urlParams.chatId],
   );
 
   // Focus the input field when creating a new chat
@@ -172,18 +185,61 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
+      let newActiveToolCalls: Record<string, RigToolCall> | null = null;
+
       if (lastMessage.type === "ToolCall") {
         try {
           const toolCall = ToolCallSchema.parse(
-            JSON.parse(lastMessage.message)
+            JSON.parse(lastMessage.message),
           );
-          setToolBeingCalled(toolCall);
+          // For a single tool call, represent it within the RigToolCall structure
+          const rigToolCall: RigToolCall = {
+            id: toolCall.id,
+            function: {
+              name: toolCall.name,
+              // Attempt to parse params, default to raw string if not JSON
+              arguments: (() => {
+                try {
+                  return JSON.parse(toolCall.params);
+                } catch {
+                  return { rawParams: toolCall.params }; // Keep raw params if parsing fails
+                }
+              })(),
+            },
+          };
+          newActiveToolCalls = { [toolCall.id]: rigToolCall };
         } catch (error) {
           console.error("Failed to parse tool call:", error);
         }
-      } else {
-        setToolBeingCalled(null);
+      } else if (lastMessage.type === "ParToolCall") {
+        try {
+          const parToolCall = ParToolCallSchema.parse(
+            JSON.parse(lastMessage.message),
+          );
+          newActiveToolCalls = parToolCall.tool_calls.reduce(
+            (acc, toolCall) => {
+              acc[toolCall.id] = toolCall;
+              return acc;
+            },
+            {} as Record<string, RigToolCall>,
+          );
+        } catch (error) {
+          console.error("Failed to parse parallel tool call:", error);
+        }
       }
+
+      // Reset states if the last message is not a relevant tool call type
+      if (
+        lastMessage.type !== "ToolCall" &&
+        lastMessage.type !== "ParToolCall"
+      ) {
+        newActiveToolCalls = null;
+      }
+
+      setActiveToolCalls(newActiveToolCalls);
+    } else {
+      // Clear states if there are no messages
+      setActiveToolCalls(null);
     }
   }, [messages]);
 
@@ -202,7 +258,7 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
         urlParams.chatId,
         messages,
         getAccessToken,
-        i18n.language
+        i18n.language,
       );
     }
   }, [
@@ -254,29 +310,42 @@ export function Chat({ selectedChatId }: { selectedChatId?: string }) {
               key={message.id}
               message={message}
               messages={messages}
+              lastUserMessageRef={lastUserMessageRef}
             />
           ))}
-          <div className="flex flex-row items-center gap-2 pl-3 mt-2">
+          <div className="flex flex-row items-center gap-2 pl-3 mt-2 flex-wrap justify-start">
             {isLoading && <ThinkingIndicator />}
-            {isLoading && !toolBeingCalled && isLastMessageOutgoing && (
+            {/* Render thinking indicator if loading and no specific tools are active yet */}
+            {isLoading && !activeToolCalls && isLastMessageOutgoing && (
               <ToolCallMessage
                 toolCall={{
-                  id: "non-relevant",
-                  params: "non-relevant",
+                  id: "thinking-indicator", // Use a distinct ID
                   name: "thinking",
+                  params: "non-relevant",
                 }}
               />
             )}
-            {toolBeingCalled && <ToolCallMessage toolCall={toolBeingCalled} />}
+            {/* Render active tool calls */}
+            <div className="flex flex-col gap-2">
+              {activeToolCalls &&
+                Object.values(activeToolCalls).map((rigToolCall) => (
+                  <ToolCallMessage
+                    key={rigToolCall.id}
+                    // Adapt RigToolCall to the ToolCall shape expected by ToolCallMessage
+                    toolCall={{
+                      id: rigToolCall.id,
+                      name: rigToolCall.function.name,
+                      params: JSON.stringify(rigToolCall.function.arguments), // Stringify arguments for ToolCallMessage
+                    }}
+                  />
+                ))}
+            </div>
           </div>
           {nestedAgentOutput && isLoading && (
             <NestedAgentOutputDisplay content={nestedAgentOutput.content} />
           )}
         </div>
-        <div ref={messagesEndRef} />
-        {messages.length !== 0 && (
-          <div className="flex-grow min-h-[68vh] md:min-h-[85vh]" />
-        )}
+        {messages.length !== 0 && <div className="flex-grow min-h-[70vh]" />}
       </ChatContainer>
     </>
   );

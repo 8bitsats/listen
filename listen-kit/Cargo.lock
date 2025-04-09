@@ -2855,6 +2855,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixedbitset"
+version = "0.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
+
+[[package]]
 name = "flate2"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4028,11 +4034,12 @@ dependencies = [
  "log",
  "mongodb",
  "once_cell",
+ "petgraph",
  "privy",
  "rand 0.8.5",
  "redis",
  "reqwest 0.12.12",
- "rig-core",
+ "rig-core 0.10.0 (git+https://github.com/piotrostr/rig?branch=fix%2Fopenai-id-missing)",
  "rig-tool-macro",
  "serde",
  "serde_json",
@@ -4772,6 +4779,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "petgraph"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
+dependencies = [
+ "fixedbitset",
+ "indexmap 2.7.1",
+]
+
+[[package]]
 name = "pharos"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5444,6 +5461,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "rig-core"
+version = "0.10.0"
+source = "git+https://github.com/piotrostr/rig?branch=fix%2Fopenai-id-missing#b7ccd2a9dedfecd1a388b51f6aef6b691ba903ad"
+dependencies = [
+ "async-stream",
+ "base64 0.22.1",
+ "bytes",
+ "futures",
+ "glob",
+ "mime_guess",
+ "ordered-float",
+ "reqwest 0.12.12",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tracing",
+]
+
+[[package]]
 name = "rig-tool-macro"
 version = "0.5.0"
 source = "git+https://github.com/piotrostr/rig-tool-macro#7fa7744b7cdd15cf0326ab74f011bf2c7cfcff31"
@@ -5451,7 +5488,7 @@ dependencies = [
  "anyhow",
  "proc-macro2",
  "quote",
- "rig-core",
+ "rig-core 0.10.0 (git+https://github.com/piotrostr/rig?branch=fix%2Fno-param-tool-definitions-gemini)",
  "serde",
  "serde_json",
  "syn 1.0.109",

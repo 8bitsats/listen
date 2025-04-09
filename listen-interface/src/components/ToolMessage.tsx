@@ -12,12 +12,14 @@ import { IoSwapHorizontal } from "react-icons/io5";
 import { z } from "zod";
 import { CandlestickDataSchema } from "../hooks/types";
 import { renderTimestamps } from "../hooks/util";
-import {
-  parseAgentOutput,
-  renderAgentOutputString,
-} from "../parse-agent-output";
 import { DexScreenerResponseSchema } from "../types/dexscreener";
-import { Message, ToolCallSchema, ToolResult } from "../types/message";
+import {
+  Message,
+  RigToolCall,
+  ToolCall,
+  ToolCallSchema,
+  ToolResult,
+} from "../types/message";
 import { TokenMetadataSchema } from "../types/metadata";
 import {
   JupiterQuoteResponseSchema,
@@ -25,6 +27,10 @@ import {
 } from "../types/quote";
 import { TweetSchema } from "../types/x";
 import { SolanaBalance, SplTokenBalance } from "./Balances";
+import {
+  BubbleMapDisplay,
+  TokenHolderAnalysisSchema,
+} from "./BubbleMapDisplay";
 import { Chart, InnerChart } from "./Chart";
 import { ChatMessage } from "./ChatMessage";
 import { DexscreenerDisplay } from "./DexscreenerDisplay";
@@ -37,6 +43,7 @@ import { RawTokenMetadataDisplay } from "./RawTokenMetadataDisplay";
 import { embedResearchAnchors } from "./ResearchOutput";
 import { RiskAnalysisDisplay, RiskAnalysisSchema } from "./RiskDisplay";
 import { TopTokensDisplay, TopTokensResponseSchema } from "./TopTokensDisplay";
+import { TopicDisplay, TopicSchema } from "./TopicDisplay";
 
 const SplTokenBalanceSchema = z.tuple([z.string(), z.number(), z.string()]);
 
@@ -47,116 +54,180 @@ const formatError = (error: string) => {
   return error;
 };
 
+const parseAndCleanMessage = (input: string): string => {
+  try {
+    let parsed = input;
+
+    // First, try to parse any JSON strings
+    while (
+      typeof parsed === "string" &&
+      (parsed.startsWith("{") ||
+        parsed.startsWith("[") ||
+        parsed.startsWith('"') ||
+        parsed.includes('\\\"') ||
+        parsed.includes("\\\\"))
+    ) {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch (e) {
+        break;
+      }
+    }
+
+    // If we have a string, clean up any remaining escape sequences
+    if (typeof parsed === "string") {
+      // Remove any remaining escaped newlines that should be actual newlines
+      parsed = parsed.replace(/\\n/g, "\n");
+
+      // Remove any remaining double backslashes
+      parsed = parsed.replace(/\\\\/g, "\\");
+
+      // Remove unnecessary escaping of quotes around markdown content
+      parsed = parsed.replace(
+        /\\?"((?:[^"\\]|\\.)*)\\?"/g,
+        (match, content) => {
+          // If content contains markdown symbols, remove the quotes
+          if (
+            content.includes("**") ||
+            content.includes("*") ||
+            content.includes("```") ||
+            content.includes("#") ||
+            content.startsWith("- ") ||
+            content.includes("\n- ")
+          ) {
+            return content;
+          }
+          return match;
+        }
+      );
+    }
+
+    // If it's not a string, stringify it nicely
+    const res =
+      typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2);
+    return res;
+  } catch (e) {
+    console.error("[parsing error]:", e);
+    return input;
+  }
+};
+
 export const ToolMessage = ({
   toolOutput,
   messages,
   currentMessage,
+  toolCallData,
 }: {
   toolOutput: ToolResult;
   messages: Message[];
   currentMessage: Message;
+  toolCallData?: RigToolCall | ToolCall | null;
 }) => {
   const { t } = useTranslation();
 
-  // Find the corresponding tool call for this tool result
-  const matchingToolCall = useMemo(() => {
+  // Use provided toolCallData if available, otherwise search for the corresponding tool call
+  const toolCallInfo = useMemo(() => {
+    if (toolCallData) {
+      // If toolCallData is provided (likely from ParToolResultMessage),
+      // adapt it slightly to match the ToolCallSchema shape for consistency where needed.
+      // Note: RigToolCall uses `arguments`, ToolCallSchema uses `params` (stringified JSON).
+      if ("function" in toolCallData) {
+        // Check if it's RigToolCall
+        return {
+          id: toolCallData.id,
+          name: toolCallData.function.name,
+          // Attempt to stringify arguments, handle potential errors
+          params: (() => {
+            try {
+              return JSON.stringify(toolCallData.function.arguments);
+            } catch (e) {
+              console.error("Failed to stringify RigToolCall arguments:", e);
+              return "{}"; // Default to empty object string on error
+            }
+          })(),
+          // Store the original arguments object for direct access if needed
+          _arguments: toolCallData.function.arguments,
+        };
+      } else {
+        // Assume it's ToolCallSchema-like
+        return toolCallData;
+      }
+    }
     if (!toolOutput.id && !toolOutput.name) return null;
-
-    // Find the index of the current message
     const currentIndex = messages.findIndex((m) => m.id === currentMessage.id);
     if (currentIndex === -1) return null;
 
-    // Look backwards through messages to find the matching tool call
     for (let i = currentIndex - 1; i >= 0; i--) {
       const message = messages[i];
       if (message.type === "ToolCall") {
         try {
           const toolCall = ToolCallSchema.parse(JSON.parse(message.message));
           if (toolCall.id === toolOutput.id) {
-            return toolCall;
+            return toolCall; // Return the found ToolCall
           }
         } catch (e) {
-          console.error("Failed to parse tool call:", e);
+          console.error("Failed to parse tool call during search:", e);
         }
       }
+
+      // Optimization: Stop searching if we hit an outgoing message or another result
+      if (
+        message.direction === "outgoing" ||
+        message.type === "ToolResult" ||
+        message.type === "ParToolResult"
+      ) {
+        break;
+      }
     }
+
     return null;
-  }, [messages, currentMessage.id, toolOutput.id]);
+  }, [
+    toolCallData,
+    messages,
+    currentMessage.id,
+    toolOutput.id,
+    toolOutput.name,
+  ]);
 
   if (toolOutput.name === "think") {
     return null;
   }
 
-  if (toolOutput.name === "get_current_time") {
-    try {
-      const parsed = JSON.parse(toolOutput.result);
-      return (
-        <div className="text-blue-300 flex items-center gap-1 p-3 text-sm">
-          <BsClock /> {new Date(parsed).toLocaleString()}
-        </div>
-      );
-    } catch (e) {
-      console.error("Failed to parse current time:", e);
-    }
-  }
-
-  if (toolOutput.name === "create_advanced_order") {
-    try {
-      const parsed = JSON.parse(toolOutput.result);
-      return (
-        <div className="text-green-300 flex items-center gap-1 p-3 text-sm">
-          <FaCheckCircle /> {parsed}
-        </div>
-      );
-    } catch (e) {
-      console.error("Failed to parse advanced order:", e);
-    }
-  }
-
-  if (toolOutput.name === "analyze_risk") {
-    try {
-      const parsed = RiskAnalysisSchema.parse(JSON.parse(toolOutput.result));
-      return <RiskAnalysisDisplay riskAnalysis={parsed} />;
-    } catch (e) {
-      console.error("Failed to parse risk analysis:", e);
-    }
-  }
-
-  if (
-    toolOutput.name === "delegate_to_research_agent" ||
-    toolOutput.name === "delegate_to_chart_agent" ||
-    toolOutput.name === "delegate_to_solana_trader_agent"
-  ) {
-    const contents = parseAgentOutput(toolOutput.result);
-    const icons = {
-      delegate_to_research_agent: <FaRobot />,
-      delegate_to_chart_agent: <FaChartLine />,
-      delegate_to_solana_trader_agent: <IoSwapHorizontal />,
-    };
-    return (
-      <div className="text-gray-400">
-        <DropdownMessage
-          title={t(`tool_messages.${toolOutput.name}`)}
-          message={renderAgentOutputString(contents)}
-          icon={icons[toolOutput.name]}
-        />
-      </div>
-    );
-  }
-
   if (toolOutput.name === "fetch_price_action_analysis") {
     try {
-      const [mint, interval] = useMemo(() => {
-        if (!matchingToolCall) return [null, "30s"];
-
+      // Extract parameters using toolCallInfo
+      const params = useMemo(() => {
+        if (!toolCallInfo) return null;
         try {
-          const params = JSON.parse(matchingToolCall.params);
-          return [params.mint, params.interval || "30s"];
+          // Use pre-parsed arguments if available (from RigToolCall)
+          if ("_arguments" in toolCallInfo && toolCallInfo._arguments) {
+            return toolCallInfo._arguments as Record<string, any>;
+          }
+          // Otherwise parse the params string (from ToolCall or adapted RigToolCall)
+          // Check if params exists and is a string before parsing
+          if (
+            "params" in toolCallInfo &&
+            typeof toolCallInfo.params === "string"
+          ) {
+            return JSON.parse(toolCallInfo.params);
+          } else if ("params" in toolCallInfo) {
+            // Log a warning if params exists but is not a string
+            console.warn(
+              "Tool call 'params' exists but is not a string:",
+              toolCallInfo.params
+            );
+            return null; // Return null as we can't parse it
+          }
+          // Redundant else-if removed
+          return null; // Return null if neither _arguments nor valid params string is found
         } catch (e) {
           console.error("Failed to parse tool call params:", e);
-          return [null, "30s"];
+          return null;
         }
-      }, [matchingToolCall]);
+      }, [toolCallInfo]);
+
+      const mint = params?.mint;
+      const interval = params?.interval || "30s";
 
       if (mint) {
         let parsed = toolOutput.result;
@@ -207,9 +278,35 @@ export const ToolMessage = ({
         </div>
       );
     } catch (e) {
-      if (toolOutput.result.includes("data: Empty") && matchingToolCall) {
+      if (toolOutput.result.includes("data: Empty") && toolCallInfo) {
         try {
-          const mint = JSON.parse(matchingToolCall.params).mint;
+          // Type-safe extraction of parameters for error case
+          let params: Record<string, any> | null = null;
+          if (
+            toolCallInfo &&
+            "_arguments" in toolCallInfo &&
+            toolCallInfo._arguments
+          ) {
+            params = toolCallInfo._arguments as Record<string, any>;
+          } else if (
+            toolCallInfo &&
+            "params" in toolCallInfo &&
+            typeof toolCallInfo.params === "string"
+          ) {
+            try {
+              params = JSON.parse(toolCallInfo.params);
+            } catch (parseError) {
+              console.error(
+                "Failed to parse params in error handler:",
+                parseError
+              );
+            }
+          }
+
+          const mint = params?.mint;
+
+          if (!mint) throw new Error("Mint not found in tool call info");
+
           return (
             <div className="p-3">
               <div className="flex items-center gap-1">
@@ -250,6 +347,51 @@ export const ToolMessage = ({
       }
       return <ChatMessage message={toolOutput.result} direction="agent" />;
     }
+  }
+
+  if (toolOutput.name === "research_x_profile") {
+    try {
+      const message = JSON.parse(toolOutput.result);
+      const processedMessage = embedResearchAnchors(message);
+      return (
+        <div className="mb-1">
+          <DropdownMessage
+            title={t("tool_messages.research_x_profile")}
+            message={processedMessage}
+            icon={<FaXTwitter />}
+          />
+        </div>
+      );
+    } catch (e) {
+      console.error("Failed to parse tweet:", e);
+      if (toolOutput.result.includes("Account suspended")) {
+        return (
+          <div className="p-3">
+            <div className="text-orange-500 flex items-center gap-1">
+              <FaExclamationTriangle /> {t("tool_messages.account_suspended")}
+            </div>
+          </div>
+        );
+      }
+      if (toolOutput.result.includes("not found")) {
+        return (
+          <div className="p-3">
+            <div className="text-orange-500 flex items-center gap-1">
+              <FaExclamationTriangle /> {t("tool_messages.user_does_not_exist")}
+            </div>
+          </div>
+        );
+      }
+      return <ChatMessage message={toolOutput.result} direction="agent" />;
+    }
+  }
+
+  if (toolOutput.result.includes("ToolCallError")) {
+    return (
+      <div className="text-red-400 flex items-center gap-1 p-3 text-sm">
+        <FaExclamationTriangle /> {t("tool_messages.tool_call_error")}
+      </div>
+    );
   }
 
   if (toolOutput.name === "search_web") {
@@ -303,41 +445,82 @@ export const ToolMessage = ({
     }
   }
 
-  if (toolOutput.name === "research_x_profile") {
+  if (toolOutput.name === "get_current_time") {
     try {
-      const message = JSON.parse(toolOutput.result);
-      const processedMessage = embedResearchAnchors(message);
+      const parsed = JSON.parse(toolOutput.result);
       return (
-        <div className="mb-1">
-          <DropdownMessage
-            title={t("tool_messages.research_x_profile")}
-            message={processedMessage}
-            icon={<FaXTwitter />}
-          />
+        <div className="text-blue-300 flex items-center gap-1 p-3 text-sm">
+          <BsClock /> {new Date(parsed).toLocaleString()}
         </div>
       );
     } catch (e) {
-      console.error("Failed to parse tweet:", e);
-      if (toolOutput.result.includes("Account suspended")) {
-        return (
-          <div className="p-3">
-            <div className="text-orange-500 flex items-center gap-1">
-              <FaExclamationTriangle /> {t("tool_messages.account_suspended")}
-            </div>
-          </div>
-        );
-      }
-      if (toolOutput.result.includes("not found")) {
-        return (
-          <div className="p-3">
-            <div className="text-orange-500 flex items-center gap-1">
-              <FaExclamationTriangle /> {t("tool_messages.user_does_not_exist")}
-            </div>
-          </div>
-        );
-      }
-      return <ChatMessage message={toolOutput.result} direction="agent" />;
+      console.error("Failed to parse current time:", e);
     }
+  }
+
+  if (toolOutput.name === "create_advanced_order") {
+    try {
+      const parsed = JSON.parse(toolOutput.result);
+      return (
+        <div className="text-green-300 flex items-center gap-1 p-3 text-sm">
+          <FaCheckCircle /> {parsed}
+        </div>
+      );
+    } catch (e) {
+      console.error("Failed to parse advanced order:", e);
+    }
+  }
+
+  if (toolOutput.name === "analyze_risk") {
+    try {
+      const parsed = RiskAnalysisSchema.parse(JSON.parse(toolOutput.result));
+      return <RiskAnalysisDisplay riskAnalysis={parsed} />;
+    } catch (e) {
+      console.error("Failed to parse risk analysis:", e);
+    }
+  }
+  if (toolOutput.name === "analyze_holder_distribution") {
+    try {
+      const parsed = TokenHolderAnalysisSchema.parse(
+        JSON.parse(toolOutput.result)
+      );
+      return <BubbleMapDisplay topHolderAnalysis={parsed} />;
+    } catch (e) {
+      console.error("Failed to parse holder distribution:", e);
+    }
+  }
+
+  if (toolOutput.name === "analyze_sentiment") {
+    try {
+      const parsed = TopicSchema.parse(JSON.parse(toolOutput.result));
+      return <TopicDisplay topic={parsed} />;
+    } catch (e) {
+      console.error("Failed to parse sentiment:", e);
+    }
+  }
+
+  if (
+    toolOutput.name === "delegate_to_research_agent" ||
+    toolOutput.name === "delegate_to_chart_agent" ||
+    toolOutput.name === "delegate_to_solana_trader_agent"
+  ) {
+    const icons = {
+      delegate_to_research_agent: <FaRobot />,
+      delegate_to_chart_agent: <FaChartLine />,
+      delegate_to_solana_trader_agent: <IoSwapHorizontal />,
+    };
+
+    const escapedMessage = parseAndCleanMessage(toolOutput.result);
+
+    return (
+      <div className="text-gray-400">
+        <DropdownMessage
+          title={t(`tool_messages.${toolOutput.name}`)}
+          message={escapedMessage}
+          icon={icons[toolOutput.name]}
+        />
+      </div>
+    );
   }
 
   if (toolOutput.name === "fetch_token_metadata") {
@@ -497,14 +680,6 @@ export const ToolMessage = ({
         </div>
       );
     }
-  }
-
-  if (toolOutput.result.includes("ToolCallError")) {
-    return (
-      <div className="text-red-400 flex items-center gap-1 p-3 text-sm">
-        <FaExclamationTriangle /> {t("tool_messages.tool_call_error")}
-      </div>
-    );
   }
 
   return <ChatMessage message={toolOutput.result} direction="incoming" />;

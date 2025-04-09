@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
             .tool(GetPortfolio)
             .build();
 
-        let agent = ReasoningLoop::new(Model::Anthropic(Arc::new(agent)));
+        let agent = ReasoningLoop::new(Model::Claude(Arc::new(agent)));
 
         agent.stream(
             "whats the portfolio looking like?".to_string(),
@@ -38,5 +38,5 @@ async fn main() -> Result<()> {
 
 #[cfg(not(feature = "solana"))]
 fn main() {
-    println!("enable the solana feature to run this example");
+    tracing::warn!("enable the solana feature to run this example");
 }

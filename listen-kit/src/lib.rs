@@ -13,10 +13,13 @@ pub mod solana;
 #[cfg(feature = "evm")]
 pub mod evm;
 
+pub mod agent;
 pub mod common;
 pub mod cross_chain;
 pub mod data;
 pub mod dexscreener;
+pub mod faster100x;
+pub mod lunarcrush;
 pub mod mongo;
 pub mod reasoning_loop;
 pub mod signer;

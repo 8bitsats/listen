@@ -23,6 +23,12 @@ pub enum AnalystError {
 
     #[error("Unsupported operation for this analyst type")]
     UnsupportedOperation,
+
+    #[error("Streaming error")]
+    StreamingError(rig::completion::CompletionError),
+
+    #[error("Delegate error")]
+    DelegateError(String),
 }
 
 // Common trait for all analyst types
@@ -112,8 +118,7 @@ impl Analyst {
     ) -> Result<Self, AnalystError> {
         let mut analyst = Self::new(locale.clone());
 
-        // Create appropriate agents based on locale
-        let use_deepseek = locale == "zh";
+        let use_deepseek = false; // locale == "zh";
 
         if use_deepseek {
             let twitter_agent =
