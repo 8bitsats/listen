@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as SettingsImport } from './routes/settings'
 import { Route as ScreenerImport } from './routes/screener'
 import { Route as PortfolioImport } from './routes/portfolio'
+import { Route as ExamplesImport } from './routes/examples'
 import { Route as ChatImport } from './routes/chat'
 import { Route as IndexImport } from './routes/index'
 
@@ -34,6 +35,12 @@ const ScreenerRoute = ScreenerImport.update({
 const PortfolioRoute = PortfolioImport.update({
   id: '/portfolio',
   path: '/portfolio',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ExamplesRoute = ExamplesImport.update({
+  id: '/examples',
+  path: '/examples',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -67,6 +74,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatImport
       parentRoute: typeof rootRoute
     }
+    '/examples': {
+      id: '/examples'
+      path: '/examples'
+      fullPath: '/examples'
+      preLoaderRoute: typeof ExamplesImport
+      parentRoute: typeof rootRoute
+    }
     '/portfolio': {
       id: '/portfolio'
       path: '/portfolio'
@@ -96,6 +110,7 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
+  '/examples': typeof ExamplesRoute
   '/portfolio': typeof PortfolioRoute
   '/screener': typeof ScreenerRoute
   '/settings': typeof SettingsRoute
@@ -104,6 +119,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
+  '/examples': typeof ExamplesRoute
   '/portfolio': typeof PortfolioRoute
   '/screener': typeof ScreenerRoute
   '/settings': typeof SettingsRoute
@@ -113,6 +129,7 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
+  '/examples': typeof ExamplesRoute
   '/portfolio': typeof PortfolioRoute
   '/screener': typeof ScreenerRoute
   '/settings': typeof SettingsRoute
@@ -120,16 +137,30 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/portfolio' | '/screener' | '/settings'
+  fullPaths:
+    | '/'
+    | '/chat'
+    | '/examples'
+    | '/portfolio'
+    | '/screener'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/portfolio' | '/screener' | '/settings'
-  id: '__root__' | '/' | '/chat' | '/portfolio' | '/screener' | '/settings'
+  to: '/' | '/chat' | '/examples' | '/portfolio' | '/screener' | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/chat'
+    | '/examples'
+    | '/portfolio'
+    | '/screener'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRoute
+  ExamplesRoute: typeof ExamplesRoute
   PortfolioRoute: typeof PortfolioRoute
   ScreenerRoute: typeof ScreenerRoute
   SettingsRoute: typeof SettingsRoute
@@ -138,6 +169,7 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRoute,
+  ExamplesRoute: ExamplesRoute,
   PortfolioRoute: PortfolioRoute,
   ScreenerRoute: ScreenerRoute,
   SettingsRoute: SettingsRoute,
@@ -155,6 +187,7 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/chat",
+        "/examples",
         "/portfolio",
         "/screener",
         "/settings"
@@ -165,6 +198,9 @@ export const routeTree = rootRoute
     },
     "/chat": {
       "filePath": "chat.tsx"
+    },
+    "/examples": {
+      "filePath": "examples.tsx"
     },
     "/portfolio": {
       "filePath": "portfolio.tsx"

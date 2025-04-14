@@ -11,7 +11,7 @@
 //!
 //! ```sh
 //! sudo apt install protoc build-essential pkg-config libssl-dev
-//! git clone https://github.com/piotrostr/listen && cd listen
+//! git clone https://github.com/piotrostr/listen && cd listegit clone https://github.com/piotrostr/listen && cd listenn
 //! cp .env.example .env  # swap the example values with your RPCs
 //! cargo build --release
 //! ```

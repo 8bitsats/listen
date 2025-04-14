@@ -101,6 +101,7 @@ pub enum Model {
     DeepSeek(Arc<DeepSeekAgent>),
     OpenAI(Arc<OpenAIAgent>),
     OpenRouter(Arc<OpenRouterAgent>),
+    Custom(Arc<dyn rig::agent::Agent>),
 }
 
 pub struct ReasoningLoop {

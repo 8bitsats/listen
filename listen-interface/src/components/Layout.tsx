@@ -295,6 +295,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         <IoSettingsOutline className="w-5 h-5" />
                         <span className="ml-3">{t("layout.settings")}</span>
                       </button>
+
+                      <Link
+                        to="/examples"
+                        className="flex items-center h-10 rounded-lg text-gray-300 hover:text-white hover:bg-[#212121] transition-colors"
+                        activeProps={{ className: "bg-[#212121] text-white" }}
+                        onClick={() => handleNavClick(null)}
+                      >
+                        <div
+                          className={`flex items-center h-full ${
+                            isSidebarOpen ? "px-4 w-full" : "justify-center w-16"
+                          }`}
+                        >
+                          <BsLink className="w-5 h-5" />
+                          {isSidebarOpen && (
+                            <span className="ml-3">Examples</span>
+                          )}
+                        </div>
+                      </Link>
                     </div>
                   </div>
                 )}

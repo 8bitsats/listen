@@ -2,7 +2,23 @@ use crate::signer::TransactionSigner;
 use anyhow::Result;
 use std::sync::Arc;
 
+pub mod agent;
+pub mod agents;
+pub mod common;
+pub mod cross_chain;
+pub mod data;
+pub mod dexscreener;
 pub mod distiller;
+pub mod faster100x;
+pub mod grok;
+pub mod lunarcrush;
+pub mod mongo;
+pub mod reasoning_loop;
+pub mod signer;
+pub mod think;
+pub mod tokenizer;
+pub mod twitter;
+pub mod web;
 
 #[cfg(feature = "http")]
 pub mod http;
@@ -12,24 +28,6 @@ pub mod solana;
 
 #[cfg(feature = "evm")]
 pub mod evm;
-
-pub mod agent;
-pub mod common;
-pub mod cross_chain;
-pub mod data;
-pub mod dexscreener;
-pub mod faster100x;
-pub mod lunarcrush;
-pub mod mongo;
-pub mod reasoning_loop;
-pub mod signer;
-pub mod think;
-pub mod twitter;
-pub mod web;
-
-pub mod tokenizer;
-
-pub mod agents;
 
 #[ctor::ctor]
 fn init() {
