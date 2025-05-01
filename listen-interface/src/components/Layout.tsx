@@ -10,6 +10,7 @@ import {
   IoChatboxOutline,
   IoSettingsOutline,
   IoWalletOutline,
+  IoBarChartOutline
 } from "react-icons/io5";
 import { RxDashboard } from "react-icons/rx";
 import { useMobile } from "../contexts/MobileContext";
@@ -295,6 +296,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         <IoSettingsOutline className="w-5 h-5" />
                         <span className="ml-3">{t("layout.settings")}</span>
                       </button>
+
+                      <Link
+                        to="/market-data"
+                        className="flex items-center h-10 w-full rounded-lg text-gray-300 hover:text-white hover:bg-[#212121] transition-colors px-4"
+                        onClick={() => isMobile && setIsSidebarOpen(false)}
+                      >
+                        <IoBarChartOutline className="w-5 h-5" />
+                        <span className="ml-3">Market Data</span>
+                      </Link>
 
                       <Link
                         to="/examples"

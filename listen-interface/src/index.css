@@ -282,3 +282,43 @@ html {
     box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
   }
 }
+
+/* Add neon glow effects for the logo and title */
+.neon-glow-logo {
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.8)) 
+         drop-shadow(0 0 12px rgba(139, 92, 246, 0.6))
+         drop-shadow(0 0 18px rgba(74, 222, 128, 0.6));
+  animation: logoGlow 3s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+@keyframes logoGlow {
+  0% {
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.8)) 
+           drop-shadow(0 0 12px rgba(139, 92, 246, 0.6))
+           drop-shadow(0 0 18px rgba(74, 222, 128, 0.4));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.9)) 
+           drop-shadow(0 0 18px rgba(74, 222, 128, 0.8))
+           drop-shadow(0 0 24px rgba(139, 92, 246, 0.7));
+    transform: scale(1.05);
+  }
+  100% {
+    filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.8)) 
+           drop-shadow(0 0 14px rgba(139, 92, 246, 0.7))
+           drop-shadow(0 0 20px rgba(74, 222, 128, 0.6));
+    transform: scale(1);
+  }
+}
+
+/* Add pulse effect for bonk button */
+.bonk-button-hover {
+  transition: all 0.3s ease;
+}
+
+.bonk-button-hover:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2) drop-shadow(0 0 10px rgba(74, 222, 128, 0.8));
+}

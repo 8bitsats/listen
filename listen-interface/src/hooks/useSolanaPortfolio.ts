@@ -4,6 +4,7 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
 } from "@solana/web3.js";
+import { config } from "../config";
 import { tokenMetadataCache } from "./localStorage";
 import { Holding, PortfolioItem, PriceResponse, TokenMetadata } from "./types";
 import { fetchListenMetadata } from "./useListenMetadata";
@@ -14,7 +15,7 @@ const TOKEN_PROGRAM_ID = new PublicKey(
 );
 
 const connection = new Connection(
-  import.meta.env?.VITE_RPC_URL ?? "https://api.mainnet-beta.solana.com"
+  config.solanaRpcUrl
 );
 
 export async function getHoldings(

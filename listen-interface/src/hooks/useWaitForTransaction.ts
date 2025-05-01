@@ -1,16 +1,17 @@
 import { Connection, TransactionSignature } from "@solana/web3.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { config } from "../config";
 
 interface TransactionResult {
   success: boolean;
-  signature: TransactionSignature;
+  signature: string;
   error?: string;
 }
 
 export const useWaitForTransaction = (
   signature: TransactionSignature | null | undefined,
 ) => {
-  const connection = new Connection(import.meta.env.VITE_RPC_URL);
+  const connection = new Connection(config.solanaRpcUrl);
   const queryClient = useQueryClient();
 
   return useQuery<TransactionResult>({

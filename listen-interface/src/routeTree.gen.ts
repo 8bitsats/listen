@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as SettingsImport } from './routes/settings'
 import { Route as ScreenerImport } from './routes/screener'
 import { Route as PortfolioImport } from './routes/portfolio'
+import { Route as MarketDataImport } from './routes/market-data'
 import { Route as ExamplesImport } from './routes/examples'
 import { Route as ChatImport } from './routes/chat'
 import { Route as IndexImport } from './routes/index'
@@ -35,6 +36,12 @@ const ScreenerRoute = ScreenerImport.update({
 const PortfolioRoute = PortfolioImport.update({
   id: '/portfolio',
   path: '/portfolio',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const MarketDataRoute = MarketDataImport.update({
+  id: '/market-data',
+  path: '/market-data',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -81,6 +88,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamplesImport
       parentRoute: typeof rootRoute
     }
+    '/market-data': {
+      id: '/market-data'
+      path: '/market-data'
+      fullPath: '/market-data'
+      preLoaderRoute: typeof MarketDataImport
+      parentRoute: typeof rootRoute
+    }
     '/portfolio': {
       id: '/portfolio'
       path: '/portfolio'
@@ -111,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
   '/examples': typeof ExamplesRoute
+  '/market-data': typeof MarketDataRoute
   '/portfolio': typeof PortfolioRoute
   '/screener': typeof ScreenerRoute
   '/settings': typeof SettingsRoute
@@ -120,6 +135,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
   '/examples': typeof ExamplesRoute
+  '/market-data': typeof MarketDataRoute
   '/portfolio': typeof PortfolioRoute
   '/screener': typeof ScreenerRoute
   '/settings': typeof SettingsRoute
@@ -130,6 +146,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/chat': typeof ChatRoute
   '/examples': typeof ExamplesRoute
+  '/market-data': typeof MarketDataRoute
   '/portfolio': typeof PortfolioRoute
   '/screener': typeof ScreenerRoute
   '/settings': typeof SettingsRoute
@@ -141,16 +158,25 @@ export interface FileRouteTypes {
     | '/'
     | '/chat'
     | '/examples'
+    | '/market-data'
     | '/portfolio'
     | '/screener'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/examples' | '/portfolio' | '/screener' | '/settings'
+  to:
+    | '/'
+    | '/chat'
+    | '/examples'
+    | '/market-data'
+    | '/portfolio'
+    | '/screener'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/chat'
     | '/examples'
+    | '/market-data'
     | '/portfolio'
     | '/screener'
     | '/settings'
@@ -161,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRoute
   ExamplesRoute: typeof ExamplesRoute
+  MarketDataRoute: typeof MarketDataRoute
   PortfolioRoute: typeof PortfolioRoute
   ScreenerRoute: typeof ScreenerRoute
   SettingsRoute: typeof SettingsRoute
@@ -170,6 +197,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRoute,
   ExamplesRoute: ExamplesRoute,
+  MarketDataRoute: MarketDataRoute,
   PortfolioRoute: PortfolioRoute,
   ScreenerRoute: ScreenerRoute,
   SettingsRoute: SettingsRoute,
@@ -188,6 +216,7 @@ export const routeTree = rootRoute
         "/",
         "/chat",
         "/examples",
+        "/market-data",
         "/portfolio",
         "/screener",
         "/settings"
@@ -201,6 +230,9 @@ export const routeTree = rootRoute
     },
     "/examples": {
       "filePath": "examples.tsx"
+    },
+    "/market-data": {
+      "filePath": "market-data.tsx"
     },
     "/portfolio": {
       "filePath": "portfolio.tsx"

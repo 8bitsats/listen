@@ -15,6 +15,26 @@ interface SimpleHeaderProps {
   toggleMobileSidebar: () => void;
 }
 
+// New AppTitle component with neon glowing logo and bonk button
+const AppTitle = () => (
+  <div className="flex flex-col items-center pt-2 pb-3">
+    <div className="text-center mb-1">
+      <img
+        src="https://hgexgkspvtxeotelylmj.supabase.co/storage/v1/object/public/art//ChatGPT%20Image%20Apr%2029,%202025,%2008_59_41%20PM.png"
+        alt="Listen Logo"
+        className="w-16 h-16 neon-glow-logo mx-auto"
+      />
+    </div>
+    <div className="text-center">
+      <img
+        src="https://hgexgkspvtxeotelylmj.supabase.co/storage/v1/object/public/art//bonkbutton.png"
+        alt="Bonk Button"
+        className="h-10 mx-auto bonk-button-hover cursor-pointer"
+      />
+    </div>
+  </div>
+);
+
 const WalletIcon = () => {
   const { isVerySmallScreen } = useMobile();
 
@@ -56,6 +76,9 @@ export function SimpleHeader({
 
   return (
     <>
+      {/* Add AppTitle at the top of the page */}
+      <AppTitle />
+      
       {isMobile ? (
         <div
           className={`flex justify-between items-center w-full ${isVerySmallScreen ? "p-[12px]" : "p-[16px]"} ${isVerySmallScreen ? "mt-1" : "mt-2"}`}
