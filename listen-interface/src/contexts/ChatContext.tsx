@@ -10,13 +10,13 @@ import {
   useState,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { chatCache } from "../hooks/localStorage";
 import { useDebounce } from "../hooks/useDebounce";
 import { usePrivyWallets } from "../hooks/usePrivyWallet";
-import { compactPortfolio } from "../hooks/util";
 import i18n from "../i18n";
+import { chatCache } from "../lib/localStorage";
+import { compactPortfolio } from "../lib/util";
 import { renderAgentOutput } from "../parse-agent-output";
-import { pickSystemPrompt } from "../prompts";
+import { systemPrompt } from "../prompts";
 import { usePortfolioStore } from "../store/portfolioStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { useSuggestStore } from "../store/suggestStore";
@@ -55,6 +55,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     chatType,
     modelType,
     researchEnabled,
+    memoryEnabled,
   } = useSettingsStore();
   const { getAccessToken, user } = usePrivy();
   const {
@@ -136,6 +137,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
       userMessage: string,
       options?: { skipAddingUserMessage?: boolean; existingMessageId?: string }
     ) => {
+      // Clear nested agent output when starting a new message
+      setNestedAgentOutput(null);
+
       // Clear suggestions when starting a new message
       useSuggestStore.getState().clearSuggestions(chatId);
 
@@ -243,13 +247,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             }
             return msg;
           });
-        const preamble = pickSystemPrompt(
-          chatType,
-          agentMode,
+        const preamble = systemPrompt(
           portfolio,
-          defaultAmount.toString(),
           wallets?.solanaWallet?.toString() || null,
           wallets?.evmWallet?.toString() || null,
+          defaultAmount.toString(),
           user?.isGuest || false
         );
 
@@ -266,8 +268,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           features: {
             autonomous: agentMode,
             deep_research: researchEnabled,
+            memory: memoryEnabled,
           },
-          model_type: modelType,
+          model_type: "gemini", // hard-code
           locale: i18n.language,
         });
 

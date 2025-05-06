@@ -13,9 +13,10 @@ import { I18nextProvider } from "react-i18next";
 import { arbitrum } from "viem/chains";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { MobileProvider } from "./contexts/MobileContext";
-import { ModalProvider } from "./contexts/ModalContext";
 import { SidebarProvider } from "./contexts/SidebarContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import { WorldProvider } from "./contexts/WorldContext";
+
 import i18n from "./i18n";
 import "./index.css";
 
@@ -39,8 +40,8 @@ declare module "@tanstack/react-router" {
   }
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
+const AppContent = () => {
+  const content = (
     <MobileProvider>
       <I18nextProvider i18n={i18n}>
         <PrivyProvider
@@ -60,6 +61,11 @@ createRoot(document.getElementById("root")!).render(
                 "rabby_wallet",
               ],
             },
+            fundingMethodConfig: {
+              moonpay: {
+                paymentMethod: "credit_debit_card",
+              },
+            },
             externalWallets: {
               solana: {
                 connectors: toSolanaWalletConnectors({
@@ -73,9 +79,7 @@ createRoot(document.getElementById("root")!).render(
             <WagmiProvider config={config}>
               <QueryClientProvider client={new QueryClient()}>
                 <SidebarProvider>
-                  <ModalProvider>
-                    <RouterProvider router={router} />
-                  </ModalProvider>
+                  <RouterProvider router={router} />
                 </SidebarProvider>
               </QueryClientProvider>
             </WagmiProvider>
@@ -83,5 +87,17 @@ createRoot(document.getElementById("root")!).render(
         </PrivyProvider>
       </I18nextProvider>
     </MobileProvider>
+  );
+
+  return import.meta.env.VITE_WORLD_MINIAPP_ENABLED ? (
+    <WorldProvider>{content}</WorldProvider>
+  ) : (
+    content
+  );
+};
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <AppContent />
   </StrictMode>
 );

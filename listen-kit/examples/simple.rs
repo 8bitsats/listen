@@ -28,6 +28,8 @@ async fn main() -> Result<()> {
             "whats the portfolio looking like?".to_string(),
             vec![],
             None,
+            None,
+            "replace-with-any-persistant-user-id".to_string(),
         )
         .await?;
 

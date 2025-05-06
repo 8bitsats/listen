@@ -1,10 +1,11 @@
 import { usePrivy } from "@privy-io/react-auth";
 import { Link } from "@tanstack/react-router";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect } from "react";
 import { Background } from "./Background";
 
+import { useSolanaLedgerPlugin } from "@privy-io/react-auth/solana";
 import { useTranslation } from "react-i18next";
-import { BsLink } from "react-icons/bs";
+import { BiCoin } from "react-icons/bi";
 import { FaXTwitter } from "react-icons/fa6";
 import {
   IoChatboxOutline,
@@ -12,12 +13,14 @@ import {
   IoWalletOutline,
   IoBarChartOutline
 } from "react-icons/io5";
-import { RxDashboard } from "react-icons/rx";
+import { MdHistory } from "react-icons/md";
 import { useMobile } from "../contexts/MobileContext";
+import { usePanel } from "../contexts/PanelContext";
 import { useSidebar } from "../contexts/SidebarContext";
 import { usePortfolioStore } from "../store/portfolioStore";
 import { useWalletStore } from "../store/walletStore";
 import { PanelSelector } from "./PanelSelector";
+import { PipelinesInitializer } from "./PipelinesInitializer";
 import { RecentChats } from "./RecentChats";
 import { SimpleHeader } from "./SimpleHeader";
 import { SwipeHandler } from "./SwipeHandler";
@@ -88,14 +91,16 @@ function getBottomItems(t: (key: string) => string) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { isMobile, isIOS } = useMobile();
-  const [activePanel, setActivePanel] = useState<string | null>(null);
-  const { user, logout } = usePrivy();
+  const { activePanel, setActivePanel } = usePanel();
+  const { user, logout, ready, authenticated } = usePrivy();
   const { clearPortfolio } = usePortfolioStore();
-  const { clearWalletAddresses } = useWalletStore();
+  const { clearWalletAddresses, clearEoaAddresses } = useWalletStore();
+  useSolanaLedgerPlugin();
   const handleLogout = () => {
     logout();
     clearPortfolio();
     clearWalletAddresses();
+    clearEoaAddresses();
   };
   const { t } = useTranslation();
 
@@ -172,9 +177,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Avoid rendering initializers until providers are ready and user is potentially authenticated
+  // but DON'T render them conditionally *between* renders once authenticated.
+  const shouldRenderInitializers = ready && authenticated;
+
   return (
     <>
-      <WalletInitializer />
+      {/* Render initializers together and unconditionally once auth state is stable */}
+      {shouldRenderInitializers && (
+        <>
+          <WalletInitializer />
+          <PipelinesInitializer />
+        </>
+      )}
       <WebsocketInitializer />
       <VersionInitializer />
       <div
@@ -189,14 +204,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <SimpleHeader
               activePanel={activePanel}
               toggleMobileSidebar={toggleMobileSidebar}
-              setActivePanel={(panel) => {
-                setActivePanel(panel);
-                if (panel) {
-                  localStorage.setItem("activePanel", panel);
-                } else {
-                  localStorage.removeItem("activePanel");
-                }
-              }}
+              setActivePanel={setActivePanel}
             />
           </div>
         </div>
@@ -277,7 +285,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         onClick={() => handleNavClick("screener")}
                         className={`flex items-center h-10 w-full rounded-lg ${activePanel === "screener" ? "text-white bg-[#212121]" : "text-gray-300 hover:text-white hover:bg-[#212121]"} transition-colors px-4`}
                       >
-                        <RxDashboard className="w-5 h-5" />
+                        <BiCoin className="w-5 h-5" />
                         <span className="ml-3">{t("layout.screener")}</span>
                       </button>
 
@@ -285,7 +293,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         onClick={() => handleNavClick("pipelines")}
                         className={`flex items-center h-10 w-full rounded-lg ${activePanel === "pipelines" ? "text-white bg-[#212121]" : "text-gray-300 hover:text-white hover:bg-[#212121]"} transition-colors px-4`}
                       >
-                        <BsLink className="w-5 h-5" />
+                        <MdHistory className="w-5 h-5" />
                         <span className="ml-3">{t("layout.pipelines")}</span>
                       </button>
 
@@ -402,10 +410,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {isMobile && activePanel && (
             <div className="fixed inset-0 z-40 bg-black/95 overflow-auto">
               <div className="p-4">
-                <PanelSelector
-                  activePanel={activePanel}
-                  setActivePanel={setActivePanel}
-                />
+                <PanelSelector />
               </div>
             </div>
           )}
@@ -417,10 +422,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 activePanel ? "translate-x-0" : "translate-x-full"
               }`}
             >
-              <PanelSelector
-                activePanel={activePanel}
-                setActivePanel={setActivePanel}
-              />
+              <PanelSelector />
             </div>
           )}
         </div>

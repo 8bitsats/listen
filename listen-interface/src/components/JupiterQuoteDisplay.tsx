@@ -1,5 +1,5 @@
 import { useListenMetadata } from "../hooks/useListenMetadata";
-import { formatAmount, imageMap } from "../hooks/util";
+import { formatAmount, imageMap } from "../lib/util";
 import { JupiterQuoteResponse } from "../types/quote";
 
 interface JupiterQuoteDisplayProps {
@@ -42,7 +42,7 @@ export const JupiterQuoteDisplay = ({ quote }: JupiterQuoteDisplayProps) => {
   ).toFixed(2);
 
   return (
-    <div className="border border-[#2D2D2D] rounded-lg p-4 bg-black/40 backdrop-blur-sm">
+    <div className="rounded-lg p-4 bg-black/40 backdrop-blur-sm my-2">
       <div className="flex items-center gap-4">
         {/* Input Token */}
         <div className="flex-1">

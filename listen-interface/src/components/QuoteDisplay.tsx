@@ -1,6 +1,7 @@
 import { useToken } from "../hooks/useToken";
-import { chainIdNumericToChainId, formatAmount, imageMap } from "../hooks/util";
+import { formatAmount, imageMap } from "../lib/util";
 import { QuoteResponse } from "../types/quote";
+import { ChainIcon } from "./ChainIcon";
 
 interface QuoteDisplayProps {
   quote: QuoteResponse;
@@ -32,10 +33,6 @@ export const QuoteDisplay = ({ quote }: QuoteDisplayProps) => {
   const inputTokenDecimals = quote.from.decimals;
   const outputTokenDecimals = quote.to.decimals;
 
-  // Get chain IDs
-  const fromChain = chainIdNumericToChainId(quote.from.chain_id);
-  const toChain = chainIdNumericToChainId(quote.to.chain_id);
-
   // Fetch token metadata for images
   const inputToken = useToken(
     quote.from.address,
@@ -49,7 +46,7 @@ export const QuoteDisplay = ({ quote }: QuoteDisplayProps) => {
     imageMap[quote.to.token as keyof typeof imageMap];
 
   return (
-    <div className="border border-[#2D2D2D] rounded-lg p-4 bg-black/40 backdrop-blur-sm">
+    <div className="p-4 my-2">
       <div className="flex items-center gap-4">
         {/* Input Token */}
         <div className="flex-1">
@@ -68,16 +65,12 @@ export const QuoteDisplay = ({ quote }: QuoteDisplayProps) => {
             <div>
               <div className="font-bold flex items-center gap-2">
                 {quote.from.token}
-                <img
-                  src={`https://dd.dexscreener.com/ds-data/chains/${fromChain}.png`}
-                  alt={fromChain}
-                  className="w-4 h-4 rounded-full"
-                />
+                <ChainIcon chainId={quote.from.chain_id} />
               </div>
               <div className="text-sm">
                 {formatAmount(inputAmount, inputTokenDecimals)}
               </div>
-              <div className="text-xs">
+              <div className="text-xs text-gray-400">
                 {quote.from.address.slice(0, 6)}...
                 {quote.from.address.slice(-4)}
               </div>
@@ -120,16 +113,12 @@ export const QuoteDisplay = ({ quote }: QuoteDisplayProps) => {
             <div>
               <div className="font-bold flex items-center gap-2">
                 {quote.to.token}
-                <img
-                  src={`https://dd.dexscreener.com/ds-data/chains/${toChain}.png`}
-                  alt={toChain}
-                  className="w-4 h-4 rounded-full"
-                />
+                <ChainIcon chainId={quote.to.chain_id} />
               </div>
               <div className="text-sm">
                 {formatAmount(outputAmount, outputTokenDecimals)}
               </div>
-              <div className="text-xs">
+              <div className="text-xs text-gray-400">
                 {quote.to.address.slice(0, 6)}...
                 {quote.to.address.slice(-4)}
               </div>

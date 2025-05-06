@@ -1,5 +1,5 @@
 import { useToken } from "../hooks/useToken";
-import { caip2ToChainId, formatAmount } from "../hooks/util";
+import { caip2ToChainId, formatAmount } from "../lib/util";
 import { PipelineActionType, PipelineStep } from "../types/pipeline";
 import { PipelineStepContainer } from "./PipelineStepContainer";
 import { Spinner } from "./Spinner";
@@ -62,7 +62,10 @@ export const SwapPipelineStep = ({
             name={inputName}
             amount={
               inputToken
-                ? formatAmount(step.action.amount, inputToken.decimals)
+                ? formatAmount(
+                    step.action.amount,
+                    inputToken.symbol === "USDC" ? 6 : inputToken.decimals
+                  )
                 : step.action.amount
             }
             chainId={fromChain}

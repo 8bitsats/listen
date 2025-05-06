@@ -5,6 +5,7 @@ use crate::common::OpenAIAgent;
 use crate::common::OpenRouterAgent;
 use crate::tokenizer::exceeds_token_limit;
 use anyhow::Result;
+use listen_memory::graph::GraphMemory;
 use rig::completion::Message;
 use rig::message::ToolCall;
 use serde::Deserialize;
@@ -20,15 +21,16 @@ pub mod model;
 pub mod stream_gemini;
 pub mod stream_generic;
 
-#[derive(Serialize, Debug, Deserialize)]
+#[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct SimpleToolResult {
     index: usize,
     id: String,
     name: String,
+    params: String,
     result: String,
 }
 
-#[derive(Serialize, Debug, Deserialize)]
+#[derive(Serialize, Debug, Deserialize, Clone)]
 #[serde(tag = "type", content = "content")]
 pub enum StreamResponse {
     Message(String),
@@ -61,7 +63,7 @@ impl StreamResponse {
             StreamResponse::Message(message) => message.clone(),
             StreamResponse::ToolCall { name, params, .. } => {
                 let params =
-                    serde_json::from_str::<serde_json::Value>(&params)
+                    serde_json::from_str::<serde_json::Value>(params)
                         .unwrap_or_default();
                 let params_str = match params {
                     serde_json::Value::Object(obj) => obj
@@ -80,12 +82,12 @@ impl StreamResponse {
             // dont consume the nested output, this is only required by the frontend
             // to show the reasoning thoughts, it will be returned again in the tool result
             StreamResponse::NestedAgentOutput { .. } => "".to_string(),
-            StreamResponse::ParToolCall { tool_calls } => {
+            StreamResponse::ParToolCall { .. } => {
                 todo!(
                     "deep research currently doesn't support par tool calls"
                 )
             }
-            StreamResponse::ParToolResult { tool_results } => {
+            StreamResponse::ParToolResult { .. } => {
                 todo!(
                     "deep research currently doesn't support par tool results"
                 )
@@ -122,6 +124,8 @@ impl ReasoningLoop {
         prompt: String,
         messages: Vec<Message>,
         tx: Option<Sender<StreamResponse>>,
+        global_memory: Option<Arc<GraphMemory>>,
+        user_id: String,
     ) -> Result<Vec<Message>> {
         if tx.is_none() && !self.stdout {
             panic!("enable stdout or provide tx channel");
@@ -145,6 +149,8 @@ impl ReasoningLoop {
                         prompt,
                         messages,
                         tx,
+                        global_memory,
+                        user_id,
                     )
                     .await
                 }
@@ -182,10 +188,9 @@ impl ReasoningLoop {
     // Function to get the current stream channel
     pub async fn get_current_stream_channel() -> Option<Sender<StreamResponse>>
     {
-        match CURRENT_STREAM_CHANNEL.try_with(|c| c.borrow().clone()) {
-            Ok(channel) => channel,
-            Err(_) => None,
-        }
+        CURRENT_STREAM_CHANNEL
+            .try_with(|c| c.borrow().clone())
+            .unwrap_or_default()
     }
 
     // Set the current stream channel

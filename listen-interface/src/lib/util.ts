@@ -2,7 +2,7 @@ import { User, WalletWithMetadata } from "@privy-io/react-auth";
 import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { getAddress } from "viem";
-import ethLogo from "../assets/icons/ethereum.svg";
+import ethLogo from "../assets/icons/ethereum.png";
 import {
   Pipeline,
   PipelineActionType,
@@ -78,49 +78,32 @@ export const imageMap = {
 export const caip2Map = {
   solana: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
   ethereum: "eip155:1",
+  eth: "eip155:1",
   bsc: "eip155:56",
+  bnb: "eip155:56",
   arbitrum: "eip155:42161",
   base: "eip155:8453",
-  blast: "eip155:81457",
-  avalanche: "eip155:43114",
-  polygon: "eip155:137",
-  scroll: "eip155:534352",
-  optimism: "eip155:10",
-  linea: "eip155:59144",
-  gnosis: "eip155:100",
-  fantom: "eip155:250",
-  moonriver: "eip155:1285",
-  moonbeam: "eip155:1284",
-  boba: "eip155:288",
-  mode: "eip155:34443",
-  metis: "eip155:1088",
-  lisk: "eip155:1135",
-  aurora: "eip155:1313161554",
-  sei: "eip155:1329",
-  immutability: "eip155:13371",
-  gravity: "eip155:1625",
-  taiko: "eip155:167000",
-  cronos: "eip155:25",
-  fraxtal: "eip155:252",
-  abstract: "eip155:2741",
-  celo: "eip155:42220",
-  world: "eip155:480",
-  mantle: "eip155:5000",
-  berachain: "eip155:80094",
+  // berachain: "eip155:80094",
 };
+
+export function chainIdToCaip2(chainId?: string) {
+  if (!chainId) return "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+
+  let values = Object.values(caip2Map);
+  if (values.includes(chainId)) {
+    return chainId;
+  }
+  return caip2Map[chainId as keyof typeof caip2Map];
+}
 
 // add more here, the stuff that is not easily searchable and needs to be spot on
 export const addressBook = {
   solana: {
     SOL: "So11111111111111111111111111111111111111112",
     USDC: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    BONK: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-    LISTEN: "Cn5Ne1vmR9ctMGY9z5NC71A3NYFvopjXNyxYtfVYpump",
-    JLP: "27G8MtK7VtTcCHkpASjSDdkWWYfoqT6ggEuKidVJidD4",
   },
   ethereum: {
     usdc: getAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
-    pepe: getAddress("0x25d887Ce7a35172C62FeBFD67a1856F20FaEbB00"),
   },
   arbitrum: {
     usdc: getAddress("0xaf88d065e77c8cC2239327C5EDb3A432268e5831"),
@@ -342,7 +325,7 @@ export const renderAddressOrTx = (text: string): string => {
   const backtickPattern = /`([^`]+)`/g;
   let backtickMatch;
 
-  while ((backtickMatch = backtickPattern.exec(text)) !== null) {
+  while ((backtickMatch = backtickPattern.exec(processedText)) !== null) {
     const fullMatch = backtickMatch[0]; // The entire match including backticks
     const content = backtickMatch[1]; // Just the content part (without backticks)
 
@@ -364,24 +347,28 @@ export const renderAddressOrTx = (text: string): string => {
         displayText = `${content.slice(0, 4)}..${content.slice(-4)}`;
       } else if (isEvmTx) {
         url = `https://blockscan.com/tx/${content}`;
+        // Keep full EVM Tx hash for clarity
         displayText = content;
       } else {
         // isEvmAddress
         url = `https://blockscan.com/address/${content}`;
-        displayText = content;
+        // Truncate EVM address display like Solana addresses
+        displayText = `${content.slice(0, 6)}..${content.slice(-4)}`; // e.g., 0x1234..abcd
       }
 
       // Create the replacement with the link (without backticks)
       const replacement = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline">${displayText}</a>`;
 
       // Replace this specific occurrence
+      const currentIndex = backtickMatch.index; // Store index before modifying processedText
       processedText =
-        processedText.substring(0, backtickMatch.index) +
+        processedText.substring(0, currentIndex) +
         replacement +
-        processedText.substring(backtickMatch.index + fullMatch.length);
+        processedText.substring(currentIndex + fullMatch.length);
 
-      // Adjust the regex lastIndex to account for the replacement
-      backtickPattern.lastIndex += replacement.length - fullMatch.length;
+      // Adjust the regex lastIndex based on the change in length
+      // The next search needs to start right after the inserted replacement
+      backtickPattern.lastIndex = currentIndex + replacement.length;
     }
   }
 

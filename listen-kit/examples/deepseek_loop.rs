@@ -22,6 +22,8 @@ async fn main() -> Result<()> {
                 "what can you tell me about listen?".to_string(),
                 vec![],
                 None,
+                None,
+                "replace-with-any-persistant-user-id".to_string(),
             )
             .await
     })

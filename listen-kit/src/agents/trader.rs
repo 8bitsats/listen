@@ -1,7 +1,13 @@
 use crate::{
     agents::delegate::delegate_to_agent,
     common::{gemini_agent_builder, GeminiAgent},
-    data::{FetchTokenMetadata, FetchTokenPrice},
+    data::{
+        evm_fallback_tools::{
+            FetchPriceActionAnalysisEvm, FetchTokenMetadataEvm,
+        },
+        FetchTokenMetadata, FetchTokenPrice,
+    },
+    evm::tools::{GetErc20Balance, GetEthBalance},
     faster100x::AnalyzeHolderDistribution,
     reasoning_loop::Model,
     signer::SignerContext,
@@ -17,7 +23,7 @@ use anyhow::Result;
 use rig_tool_macro::tool;
 use std::sync::Arc;
 
-const PREAMBLE_EN: &str = "You are a comprehensive Solana analysis and trading agent. Your goal is to perform thorough research and trading:
+const PREAMBLE_EN: &str = "You are a comprehensive analysis and trading agent. Your goal is to perform thorough research and trading:
         1. Analyze market conditions, liquidity, and trading opportunities
         2. Investigate tokens, addresses, and entities on-chain
         3. Follow interesting leads and dig deeper into findings
@@ -27,7 +33,7 @@ const PREAMBLE_EN: &str = "You are a comprehensive Solana analysis and trading a
         Always use English.";
 
 const PREAMBLE_ZH: &str =
-    "你是一个全面的Solana分析和交易代理。你的目标是进行彻底的研究和交易：
+    "你是一个全面的 分析和交易代理。你的目标是进行彻底的研究和交易：
         1. 分析市场条件、流动性和交易机会
         2. 调查代币、地址和链上实体
         3. 跟随有趣的话题并深入挖掘
@@ -36,7 +42,7 @@ const PREAMBLE_ZH: &str =
         6. 基于全面的风险/回报分析推荐行动. 
         请使用中文";
 
-pub fn create_solana_trader_agent(locale: String) -> GeminiAgent {
+pub fn create_trader_agent(locale: String) -> GeminiAgent {
     gemini_agent_builder()
         .preamble(if locale == "zh" {
             PREAMBLE_ZH
@@ -53,22 +59,26 @@ pub fn create_solana_trader_agent(locale: String) -> GeminiAgent {
         .tool(GetSplTokenBalance)
         .tool(FetchTokenPrice)
         .tool(AnalyzeRisk)
+        .tool(GetEthBalance)
+        .tool(GetErc20Balance)
+        .tool(FetchTokenMetadataEvm)
+        .tool(FetchPriceActionAnalysisEvm)
         .build()
 }
 
 #[tool(
-    description = "Delegate a task to Solana trader agent. It can analyze on-chain data, perform swaps, fetch token info, check balances, and schedule advanced orders"
+    description = "Delegate a task to the trader agent. It can analyze on-chain data, perform swaps, fetch token info, check balances, and schedule advanced orders on both Solana and EVM chains"
 )]
-pub async fn delegate_to_solana_trader_agent(
-    prompt: String,
-) -> Result<String> {
+pub async fn delegate_to_trader_agent(prompt: String) -> Result<String> {
     let ctx = SignerContext::current().await;
+    let user_id = ctx.user_id().unwrap_or_default();
     delegate_to_agent(
         prompt,
-        Model::Gemini(Arc::new(create_solana_trader_agent(ctx.locale()))),
-        "solana_trader_agent".to_string(),
+        Model::Gemini(Arc::new(create_trader_agent(ctx.locale()))),
+        "trader_agent".to_string(),
         ctx,
         false,
+        user_id,
     )
     .await
 }
